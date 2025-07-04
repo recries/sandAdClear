@@ -1,0 +1,21 @@
+{
+  "name": "Sand Ad Clear",
+  "description": "Base Level Extension",
+  "version": "1.0",
+  "manifest_version": 3,
+  "action": {
+    "default_icon": "icon_sand.png"
+  },
+  "background": {
+  "service_worker": "script/back.js"
+  },
+  "content_scripts": [
+    {
+      "js": ["jquery.min.js", "script/content.js"],
+      "matches":
+      ["https://*/*"]
+    ,
+      "run_at": "document_idle"
+    }
+  ]
+}
