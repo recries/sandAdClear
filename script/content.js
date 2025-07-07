@@ -1,133 +1,76 @@
-var adCount = 0;
-var adRemoveTimeout = null;
-var alertShown = false;
+const hostname = window.location.hostname;
 
-// 1. 초기 광고 제거 및 카운트 집계
-$(window).on('load', function() {
-  adCount += $('ins').length;
-  $('ins').remove();
+let domBlockedCount = 0; // DOM에서 차단된 요소 수
 
-  adCount += $('.commercial-unit-desktop-rhs').length;
-  $('.commercial-unit-desktop-rhs').remove();
-
-  adCount += $('[id^="ad"]').length;
-  $('[id^="ad"]').each(function() {
-    const $parent = $(this).parent('a');
-    if ($parent.length) {
-      $parent.remove();
-    }
-  });
-  $('[id^="ad"]').remove(); 
-  
-  $('[class^="ad"]').each(function() {
-  const $parent = $(this).parent('a');
-  if ($parent.length) {
-    $parent.remove();
+chrome.storage.sync.get('whitelist', (data) => {
+  const whitelist = data.whitelist || [];
+  if (whitelist.includes(hostname)) {
+    console.log('Sand Ad Clear: 이 사이트는 화이트리스트에 등록되어 광고 차단이 비활성화되었습니다.');
+    return; // 화이트리스트 사이트에서는 아무 작업도 하지 않음
   }
+
+  // 이하 광고 차단 로직 실행
+  main();
 });
 
-  $('[class^="ad"]').remove(); 
+function main() {
+  // 광고 선택자 목록
+  const adSelectors = [
+    '[id^="ad-"]:not(#thread-bottom)', '[id^="ad_"]:not(#thread-bottom)',
+    '[id^="ads-"]:not(#thread-bottom)', '[class^="ad-"]', '[class^="ads-"]',
+    '[class*="sponsor"]', '[id*="sponsor"]',
+    '.ad-container', '.ad-wrapper', '.ad-slot', '.ad-banner', '.ad-box'
+  ];
 
-  // 동적 광고 제거 후 알림 출력을 위해 타이머 초기화
-  //resetAdRemoveTimer();
-});
-
-// 2. 동적 광고 제거 감지용 MutationObserver
-const observer = new MutationObserver(mutations => {
-  let removedThisBatch = false;
-
-  mutations.forEach(mutation => {
-    mutation.addedNodes.forEach(node => {
-      if (node.nodeType !== 1) return;
-
-      // iframe 직접 추가된 경우
-      if (node.tagName === 'IFRAME') {
-        if (handleIframe($(node))) removedThisBatch = true;
-      }
-
-      // 하위 iframe 포함 여부 확인
-      $(node).find('iframe').each(function () {
-        if (handleIframe($(this))) removedThisBatch = true;
+  // DOM에서 광고 요소를 찾아 제거하는 함수
+  function removeAdElements() {
+    let currentBatchRemoved = 0;
+    adSelectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        // 너무 큰 영역이 삭제되는 것을 방지하기 위한 간단한 보호 장치
+        if (el.style.display !== 'none') { // 이미 숨겨진 요소는 다시 세지 않음
+            el.style.display = 'none'; // 즉시 숨김
+            currentBatchRemoved++;
+          }
       });
+    });
+    if (currentBatchRemoved > 0) {
+      domBlockedCount += currentBatchRemoved;
+      // 백그라운드 스크립트로 DOM 차단 수 업데이트 메시지 전송
+      chrome.runtime.sendMessage({ type: 'updateDomBlockedCount', count: domBlockedCount }, function() {
+        if (chrome.runtime.lastError) {
+          // console.warn("Error sending updateDomBlockedCount message:", chrome.runtime.lastError.message);
+          // 컨텍스트가 무효화되었으므로, 이 메시지에 대해 더 이상 재시도하거나 작업을 수행할 필요가 없습니다.
+        }
+      });
+    }
+    return currentBatchRemoved > 0;
+  }
+
+  // 동적 콘텐츠 변경을 감지하는 MutationObserver
+  const observer = new MutationObserver((mutations) => {
+    let removedThisBatch = false;
+    mutations.forEach(mutation => {
+      if (mutation.addedNodes.length) {
+        if (removeAdElements()) {
+          removedThisBatch = true;
+        }
+      }
     });
   });
 
-  if (removedThisBatch) {
-    //resetAdRemoveTimer();
-  }
-});
+  // 초기 광고 제거 실행
+  window.addEventListener('load', () => {
+    removeAdElements();
+  });
 
-function resetAdRemoveTimer() {
-  if (adRemoveTimeout) clearTimeout(adRemoveTimeout);
-  adRemoveTimeout = setTimeout(() => {
-    if (!alertShown && adCount > 0) {
-      showCustomAlert(`광고 ${adCount}개를 삭제했습니다.`);
-      alertShown = true;
+  // Observer 시작
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  // 팝업 메시지 리스너 (기존 기능 유지)
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message === 'getAdCount') {
+      sendResponse({ status: "Ad element remover is active." });
     }
-  }, 2000); // 3초 동안 추가 광고가 없으면 알림
-}
-
-function handleIframe($iframe) {
-  const src = $iframe.attr('src') || '';
-  const classOrId = ($iframe.attr('class') || '') + ' ' + ($iframe.attr('id') || '') + ' ' + ($iframe.attr('title') || '');
-
-  const isAd = /ads|doubleclick|googlesyndication|shopping|adservice|taboola/i.test(src) ||
-               /ad|banner|sponsored/i.test(classOrId);
-
-  if (isAd) {
-    const $parent = $iframe.parent();
-    if ($parent.is('div')) {
-      $parent.remove();
-    } else {
-      $iframe.remove();
-    }
-    adCount++;
-    return true;
-  }
-  return false;
-}
-
-observer.observe(document.body, { childList: true, subtree: true });
-
-// 알림 함수는 기존 코드 그대로 사용
-function showCustomAlert(messages, interval = 1000, stayTime = 4000) {
-  $('.custom-alert').remove();
-
-  const $alert = $('<div></div>', {
-    class: 'custom-alert',
-    css: {
-      position: 'fixed',
-      top: '20px',
-      right: '20px',
-      background: '#f9ccd9',
-      color: '#333',
-      'border-radius': '10px',
-      padding: '12px 18px',
-      'font-size': '14px',
-      'z-index': 9999,
-      'box-shadow': '0 4px 10px rgba(0,0,0,0.2)',
-      'max-width': '220px',
-      'word-break': 'break-word',
-      opacity: 0
-    }
-  }).appendTo('body');
-
-  $alert.animate({ opacity: 1, right: '30px' }, 500);
-  $alert.text(messages);
-  $alert.delay(stayTime);
-  $alert.animate({ opacity: 0, right: '0px' }, 500, function () {
-    $(this).remove();
   });
 }
-
-// 팝업에서 메시지 받았을 때 응답
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message === 'getAdCount') {
-    if (adCount > 0) {
-      showCustomAlert(`이 페이지에서 광고 ${adCount}개를 제거했습니다.`);
-    } else {
-      showCustomAlert('광고가 제거되지 않았습니다.');
-    }
-    sendResponse({ adCount });  // 선택적으로 응답
-  }
-});

@@ -1,14 +1,98 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
+  <title>Sand Ad Clear</title>
   <meta charset="UTF-8">
-  <title>광고 제거 상태</title>
   <style>
-    
+    body {
+      width: 220px;
+      font-family: sans-serif;
+      text-align: center;
+      background-color: #f9f9f9;
+      padding: 10px;
+    }
+    h1 {
+      font-size: 16px;
+      color: #333;
+      margin: 5px 0;
+    }
+    p {
+        margin: 10px 0;
+    }
+    #ad-count-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+    }
+    #ad-count {
+      font-size: 24px;
+      font-weight: bold;
+      color: #f9ccd9;
+    }
+    #whitelist-toggle-container {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    #whitelist-toggle-label {
+        font-size: 14px;
+    }
+    /* Simple Toggle Switch CSS */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 24px;
+    }
+    .switch input { 
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #f9ccd9;
+    }
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
   </style>
 </head>
-<body style="display: none;">
+<body>
+  <h1>Sand Ad Clear</h1>
   
+  <div id="whitelist-toggle-container">
+      <span id="whitelist-toggle-label">이 사이트에서 차단 활성화</span>
+      <label class="switch">
+          <input type="checkbox" id="whitelist-toggle">
+          <span class="slider"></span>
+      </label>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>

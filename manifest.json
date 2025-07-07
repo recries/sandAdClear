@@ -1,20 +1,29 @@
 {
   "name": "Sand Ad Clear",
   "description": "Base Level Extension",
-  "version": "1.0",
+  "version": "1.1",
   "manifest_version": 3,
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback",
+    "webNavigation",
+    "storage",
+    "tabs"
+  ],
+  
   "action": {
-    "default_icon": "icon_sand.png"
+    "default_icon": "icon_sand.png",
+    "default_popup": "popup.html"
   },
   "background": {
-  "service_worker": "script/back.js"
+    "service_worker": "script/back.js"
   },
   "content_scripts": [
     {
       "js": ["jquery.min.js", "script/content.js"],
-      "matches":
-      ["https://*/*"]
-    ,
+      "matches": [
+        "https://*/*"
+      ],
       "run_at": "document_idle"
     }
   ]
