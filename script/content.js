@@ -16,10 +16,12 @@ chrome.storage.sync.get('whitelist', (data) => {
 function main() {
   // 광고 선택자 목록
   const adSelectors = [
-    '[id^="ad-"]:not(#thread-bottom)', '[id^="ad_"]:not(#thread-bottom)',
-    '[id^="ads-"]:not(#thread-bottom)', '[class^="ad-"]', '[class^="ads-"]',
+    '[id*="-ad-"]:not(#thread-bottom)', '[id^="ad_"]:not(#thread-bottom)',
+    '[id^="ads-"]:not(#thread-bottom)', '[class^="ads-"]',
+    '[class*="-ad-"]',
     '[class*="sponsor"]', '[id*="sponsor"]',
-    '.ad-container', '.ad-wrapper', '.ad-slot', '.ad-banner', '.ad-box'
+    '.ad-container', '.ad-wrapper', '.ad-slot', '.ad-banner', '.ad-box',
+    
   ];
 
   // DOM에서 광고 요소를 찾아 제거하는 함수
