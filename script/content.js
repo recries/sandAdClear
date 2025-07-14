@@ -18,24 +18,55 @@ function main() {
   const adSelectors = [
     '[id*="-ad-"]:not(#thread-bottom)', '[id^="ad_"]:not(#thread-bottom)',
     '[id^="ads-"]:not(#thread-bottom)', '[class^="ads-"]',
+    '[id^="ad-"]', // 추가: 'ad-'로 시작하는 ID
+    '[class^="ad-"]', // 추가: 'ad-'로 시작하는 클래스
     '[class*="-ad-"]',
     '[class*="sponsor"]', '[id*="sponsor"]',
     '.ad-container', '.ad-wrapper', '.ad-slot', '.ad-banner', '.ad-box',
-    
+    '[data-ad_]', '[data-ad-]', '[data-ads-]', '[data-ads_]',
+    '[class$="-ad"]', '[class$="_ad"]', '[class$="-ads"]', '[class$="_ads"]',
+    '[id$="-ad"]', '[id$="_ad"]', '[id$="-ads"]', '[id$="_ads"]',
+    'div.cmtext_ad', // 추가: 특정 클래스를 가진 div
+    'div[data-ad-node]', // 추가: data-ad-node 속성을 가진 div
+    'ins', // 추가: ins 태그
+    'ins.kakao_ad_area', // 추가: kakao_ad_area 클래스를 가진 ins 태그
   ];
 
   // DOM에서 광고 요소를 찾아 제거하는 함수
   function removeAdElements() {
     let currentBatchRemoved = 0;
+    const parentsToCheck = new Set(); // 부모 요소를 저장할 Set
+
     adSelectors.forEach(selector => {
       document.querySelectorAll(selector).forEach(el => {
-        // 너무 큰 영역이 삭제되는 것을 방지하기 위한 간단한 보호 장치
-        if (el.style.display !== 'none') { // 이미 숨겨진 요소는 다시 세지 않음
-            el.style.display = 'none'; // 즉시 숨김
+        if (el.parentNode) {
+            parentsToCheck.add(el.parentNode); // 부모 요소 추적
+            el.parentNode.removeChild(el); // 요소 제거
             currentBatchRemoved++;
           }
       });
     });
+
+    // src 속성에 'ad.' 또는 'ads.'가 포함된 태그의 부모 삭제
+    document.querySelectorAll('[src*="ad."], [src*="ads."]').forEach(el => {
+      if (el.parentNode) {
+        parentsToCheck.add(el.parentNode); // 부모 요소 추적
+        el.parentNode.removeChild(el);
+        currentBatchRemoved++;
+      }
+    });
+
+    // 추적된 부모 요소들 중 비어있는 것을 삭제
+    parentsToCheck.forEach(parent => {
+        // 부모 요소가 DOM에 여전히 존재하고, 자식이 없으며, 텍스트 내용도 비어있는 경우
+        if (document.body.contains(parent) && parent.children.length === 0 && parent.textContent.trim() === '') {
+            if (parent.parentNode) {
+                parent.parentNode.removeChild(parent);
+                currentBatchRemoved++;
+            }
+        }
+    });
+
     if (currentBatchRemoved > 0) {
       domBlockedCount += currentBatchRemoved;
       // 백그라운드 스크립트로 DOM 차단 수 업데이트 메시지 전송
